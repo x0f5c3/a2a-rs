@@ -3,7 +3,8 @@
 //! This module provides a gRPC server that implements the A2A protocol
 //! using the official Protocol Buffer definitions.
 
-use crate::services::{AsyncA2ARequestProcessor, AgentInfoProvider};
+use crate::services::AgentInfoProvider;
+use crate::port::{AsyncTaskManager, AsyncMessageHandler, AsyncNotificationManager, AsyncStreamingHandler};
 use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
 use std::net::SocketAddr;
@@ -21,25 +22,33 @@ use super::proto::{
     DeleteTaskPushNotificationConfigRequest,
     GetExtendedAgentCardRequest, AgentCard,
 };
-use super::convert::to_proto_agent_card;
+use super::convert::{to_proto_agent_card, to_proto_task, from_proto_message};
 
 /// gRPC server for the A2A protocol
 ///
 /// This server implements the A2AService gRPC service according to the
 /// A2A Protocol v0.3.0 specification.
 ///
+/// The server uses direct manager access for optimal performance and
+/// clean separation of concerns.
+///
 /// # Example
 ///
 /// ```rust,no_run
 /// # #[cfg(feature = "grpc-server")]
 /// # {
-/// use a2a_rs::{GrpcServer, SimpleAgentInfo, DefaultRequestProcessor};
+/// use a2a_rs::{GrpcServer, SimpleAgentInfo, InMemoryTaskStorage};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let task_manager = InMemoryTaskStorage::new();
+///     let message_handler = InMemoryTaskStorage::new();
+///     let agent_info = SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string());
+///     
 ///     let server = GrpcServer::new(
-///         DefaultRequestProcessor::new(),
-///         SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string()),
+///         task_manager,
+///         message_handler,
+///         agent_info,
 ///         "[::1]:50051".parse()?,
 ///     );
 ///     server.start().await?;
@@ -47,33 +56,39 @@ use super::convert::to_proto_agent_card;
 /// }
 /// # }
 /// ```
-pub struct GrpcServer<P>
+pub struct GrpcServer<T, M>
 where
-    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
+    T: AsyncTaskManager + Send + Sync + 'static,
+    M: AsyncMessageHandler + Send + Sync + 'static,
 {
-    processor: Arc<P>,
+    task_manager: Arc<T>,
+    message_handler: Arc<M>,
     agent_info: Arc<dyn AgentInfoProvider + Send + Sync>,
     addr: SocketAddr,
 }
 
-impl<P> GrpcServer<P>
+impl<T, M> GrpcServer<T, M>
 where
-    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
+    T: AsyncTaskManager + Send + Sync + 'static,
+    M: AsyncMessageHandler + Send + Sync + 'static,
 {
     /// Create a new gRPC server
     ///
     /// # Arguments
     ///
-    /// * `processor` - The request processor to handle A2A operations
+    /// * `task_manager` - Task manager for task lifecycle operations
+    /// * `message_handler` - Message handler for processing messages
     /// * `agent_info` - Agent metadata and capabilities
     /// * `addr` - The socket address to bind to
     pub fn new(
-        processor: P,
+        task_manager: T,
+        message_handler: M,
         agent_info: impl AgentInfoProvider + Send + Sync + 'static,
         addr: SocketAddr,
     ) -> Self {
         Self {
-            processor: Arc::new(processor),
+            task_manager: Arc::new(task_manager),
+            message_handler: Arc::new(message_handler),
             agent_info: Arc::new(agent_info),
             addr,
         }
@@ -84,10 +99,12 @@ where
     /// This will bind to the configured address and start serving requests.
     pub async fn start(self) -> Result<(), Box<dyn std::error::Error>> {
         let service = GrpcServiceImpl {
-            processor: self.processor,
+            task_manager: self.task_manager,
+            message_handler: self.message_handler,
             agent_info: self.agent_info,
         };
 
+        #[cfg(feature = "tracing")]
         tracing::info!("Starting A2A gRPC server on {}", self.addr);
 
         Server::builder()
@@ -100,18 +117,21 @@ where
 }
 
 /// Internal gRPC service implementation
-struct GrpcServiceImpl<P>
+struct GrpcServiceImpl<T, M>
 where
-    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
+    T: AsyncTaskManager + Send + Sync + 'static,
+    M: AsyncMessageHandler + Send + Sync + 'static,
 {
-    processor: Arc<P>,
+    task_manager: Arc<T>,
+    message_handler: Arc<M>,
     agent_info: Arc<dyn AgentInfoProvider + Send + Sync>,
 }
 
 #[tonic::async_trait]
-impl<P> A2aService for GrpcServiceImpl<P>
+impl<T, M> A2aService for GrpcServiceImpl<T, M>
 where
-    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
+    T: AsyncTaskManager + Send + Sync + 'static,
+    M: AsyncMessageHandler + Send + Sync + 'static,
 {
     async fn send_message(
         &self,
@@ -139,34 +159,105 @@ where
 
     async fn get_task(
         &self,
-        _request: Request<GetTaskRequest>,
+        request: Request<GetTaskRequest>,
     ) -> Result<Response<ProtoTask>, Status> {
-        // TODO: Implement task retrieval
-        // Architecture note: GrpcServer needs direct access to TaskManager
-        // or needs to construct JSON-RPC requests to call processor
-        // This requires architectural refactoring
+        let req = request.into_inner();
         
-        Err(Status::unimplemented("get_task not yet implemented - needs architectural refactoring"))
+        // Extract task ID from the name field (format: "tasks/{task_id}")
+        let task_id = req.name
+            .strip_prefix("tasks/")
+            .ok_or_else(|| Status::invalid_argument("Invalid task name format. Expected: tasks/{task_id}"))?
+            .to_string();
+        
+        // Convert history_length from Option<i32> to Option<u32>
+        let history_length = req.history_length.and_then(|l| {
+            if l >= 0 {
+                Some(l as u32)
+            } else {
+                None
+            }
+        });
+        
+        // Get the task using the task manager
+        let task = self.task_manager
+            .get_task(&task_id, history_length)
+            .await
+            .map_err(|e| match e {
+                crate::domain::error::A2AError::TaskNotFound(_) => Status::not_found(format!("{}", e)),
+                _ => Status::internal(format!("Failed to get task: {}", e)),
+            })?;
+        
+        // Convert domain Task to proto Task
+        let proto_task = to_proto_task(&task)
+            .map_err(|e| Status::internal(format!("Failed to convert task: {}", e)))?;
+        
+        Ok(Response::new(proto_task))
     }
 
     async fn list_tasks(
         &self,
-        _request: Request<ListTasksRequest>,
+        request: Request<ListTasksRequest>,
     ) -> Result<Response<ListTasksResponse>, Status> {
-        // TODO: Implement task listing
-        Err(Status::unimplemented("list_tasks not yet implemented"))
+        let req = request.into_inner();
+        
+        // Parse page_size, defaulting to 50
+        let page_size = req.page_size.unwrap_or(50);
+        let limit = if page_size > 0 {
+            Some(page_size as u32)
+        } else {
+            Some(50)
+        };
+        
+        // List tasks using the task manager
+        let tasks = self.task_manager
+            .list_tasks(None, limit)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to list tasks: {}", e)))?;
+        
+        let total_count = tasks.len() as i32;
+        
+        // Convert domain Tasks to proto Tasks
+        let proto_tasks = tasks
+            .iter()
+            .map(to_proto_task)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| Status::internal(format!("Failed to convert tasks: {}", e)))?;
+        
+        Ok(Response::new(ListTasksResponse {
+            tasks: proto_tasks,
+            next_page_token: String::new(), // TODO: Implement pagination token
+            page_size,
+            total_size: total_count,
+        }))
     }
 
     async fn cancel_task(
         &self,
-        _request: Request<CancelTaskRequest>,
+        request: Request<CancelTaskRequest>,
     ) -> Result<Response<ProtoTask>, Status> {
-        // TODO: Implement task cancellation
-        // Architecture note: GrpcServer needs direct access to TaskManager
-        // or needs to construct JSON-RPC requests to call processor
-        // This requires architectural refactoring
+        let req = request.into_inner();
         
-        Err(Status::unimplemented("cancel_task not yet implemented - needs architectural refactoring"))
+        // Extract task ID from the name field (format: "tasks/{task_id}")
+        let task_id = req.name
+            .strip_prefix("tasks/")
+            .ok_or_else(|| Status::invalid_argument("Invalid task name format. Expected: tasks/{task_id}"))?
+            .to_string();
+        
+        // Cancel the task using the task manager
+        let task = self.task_manager
+            .cancel_task(&task_id)
+            .await
+            .map_err(|e| match e {
+                crate::domain::error::A2AError::TaskNotFound(_) => Status::not_found(format!("{}", e)),
+                crate::domain::error::A2AError::TaskNotCancelable(_) => Status::failed_precondition(format!("{}", e)),
+                _ => Status::internal(format!("Failed to cancel task: {}", e)),
+            })?;
+        
+        // Convert domain Task to proto Task
+        let proto_task = to_proto_task(&task)
+            .map_err(|e| Status::internal(format!("Failed to convert task: {}", e)))?;
+        
+        Ok(Response::new(proto_task))
     }
 
     type SubscribeToTaskStream = Pin<Box<dyn Stream<Item = Result<StreamResponse, Status>> + Send>>;
