@@ -202,7 +202,8 @@ where
         _request: Request<GetExtendedAgentCardRequest>,
     ) -> Result<Response<AgentCard>, Status> {
         // Convert our agent info to proto AgentCard
-        let agent_card = self.agent_info.get_agent_card();
+        let agent_card = self.agent_info.get_agent_card().await
+            .map_err(|e| Status::internal(format!("Failed to get agent card: {}", e)))?;
         let card = to_proto_agent_card(&agent_card)
             .map_err(|e| Status::internal(format!("Failed to convert agent card: {}", e)))?;
         

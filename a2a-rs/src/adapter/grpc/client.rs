@@ -61,10 +61,10 @@ impl GrpcClient {
     pub async fn connect(url: impl Into<String>) -> Result<Self, A2AError> {
         let url_string = url.into();
         let channel = Channel::from_shared(url_string.clone())
-            .map_err(|e| A2AError::TransportError(format!("Invalid URL: {}", e)))?
+            .map_err(|e| A2AError::Internal(format!("Invalid URL: {}", e)))?
             .connect()
             .await
-            .map_err(|e| A2AError::TransportError(format!("Connection failed: {}", e)))?;
+            .map_err(|e| A2AError::Internal(format!("Connection failed: {}", e)))?;
 
         let client = A2aServiceClient::new(channel);
 
@@ -94,6 +94,6 @@ impl GrpcClient {
         _message: &Message,
     ) -> Result<Task, A2AError> {
         // TODO: Implement
-        Err(A2AError::UnsupportedOperation)
+        Err(A2AError::UnsupportedOperation("Not yet implemented".to_string()))
     }
 }

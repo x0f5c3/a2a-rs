@@ -11,87 +11,126 @@ use super::proto;
 
 /// Convert a domain Message to a proto Message
 pub fn to_proto_message(message: &Message) -> Result<proto::Message, A2AError> {
-    // TODO: Implement full conversion
-    // This is a skeleton implementation
+    // Convert role to proto Role enum value
+    let role_value = match message.role {
+        crate::domain::core::Role::User => proto::Role::User as i32,
+        crate::domain::core::Role::Agent => proto::Role::Agent as i32,
+    };
+    
+    // Convert parts
+    let parts = message.parts.iter()
+        .map(to_proto_part)
+        .collect::<Result<Vec<_>, _>>()?;
+    
     Ok(proto::Message {
-        id: message.id().to_string(),
-        role: message.role().to_string(),
-        parts: vec![], // TODO: Convert parts
-        timestamp: None, // TODO: Convert timestamp
-        metadata: None,
+        message_id: message.message_id.clone(),
+        context_id: message.context_id.clone().unwrap_or_default(),
+        task_id: message.task_id.clone().unwrap_or_default(),
+        role: role_value,
+        parts,
+        metadata: None, // TODO: Convert metadata
+        extensions: message.extensions.clone().unwrap_or_default(),
+        reference_task_ids: message.reference_task_ids.clone().unwrap_or_default(),
     })
 }
 
 /// Convert a proto Message to a domain Message
-pub fn from_proto_message(message: proto::Message) -> Result<Message, A2AError> {
+pub fn from_proto_message(_message: proto::Message) -> Result<Message, A2AError> {
     // TODO: Implement full conversion
     // This is a skeleton implementation
-    Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
+    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
 }
 
 /// Convert a domain Task to a proto Task
 pub fn to_proto_task(task: &Task) -> Result<proto::Task, A2AError> {
-    // TODO: Implement full conversion
-    // This is a skeleton implementation
+    // Convert status
+    let status = Some(to_proto_task_status(&task.status)?);
+    
+    // Convert artifacts
+    let artifacts = task.artifacts.as_ref()
+        .map(|arts| arts.iter().map(to_proto_artifact).collect::<Result<Vec<_>, _>>())
+        .transpose()?
+        .unwrap_or_default();
+    
+    // Convert history
+    let history = task.history.as_ref()
+        .map(|hist| hist.iter().map(to_proto_message).collect::<Result<Vec<_>, _>>())
+        .transpose()?
+        .unwrap_or_default();
+    
     Ok(proto::Task {
-        id: task.id().to_string(),
-        context_id: task.context_id().to_string(),
-        status: Some(to_proto_task_status(task.status())?),
-        artifacts: vec![], // TODO: Convert artifacts
-        history: vec![],   // TODO: Convert history
-        metadata: None,
+        id: task.id.clone(),
+        context_id: task.context_id.clone(),
+        status,
+        artifacts,
+        history,
+        metadata: None, // TODO: Convert metadata
     })
 }
 
 /// Convert a proto Task to a domain Task
-pub fn from_proto_task(task: proto::Task) -> Result<Task, A2AError> {
+pub fn from_proto_task(_task: proto::Task) -> Result<Task, A2AError> {
     // TODO: Implement full conversion
     // This is a skeleton implementation
-    Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
+    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
 }
 
 /// Convert a domain TaskStatus to a proto TaskStatus
 pub fn to_proto_task_status(status: &TaskStatus) -> Result<proto::TaskStatus, A2AError> {
+    use prost_types::Timestamp;
+    
+    let message = status.message.as_ref()
+        .map(|m| to_proto_message(m))
+        .transpose()?;
+    
+    let timestamp = status.timestamp.as_ref()
+        .map(|dt| {
+            Timestamp {
+                seconds: dt.timestamp(),
+                nanos: dt.timestamp_subsec_nanos() as i32,
+            }
+        });
+    
     Ok(proto::TaskStatus {
-        state: to_proto_task_state(status.state()) as i32,
-        message: status.message().map(|m| to_proto_message(m)).transpose()?,
-        timestamp: None, // TODO: Convert timestamp
+        state: to_proto_task_state(&status.state) as i32,
+        message,
+        timestamp,
     })
 }
 
 /// Convert a proto TaskStatus to a domain TaskStatus
-pub fn from_proto_task_status(status: proto::TaskStatus) -> Result<TaskStatus, A2AError> {
+pub fn from_proto_task_status(_status: proto::TaskStatus) -> Result<TaskStatus, A2AError> {
     // TODO: Implement full conversion
-    Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
+    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
 }
 
 /// Convert a domain TaskState to a proto TaskState
 pub fn to_proto_task_state(state: &TaskState) -> proto::TaskState {
     match state {
-        TaskState::Submitted => proto::TaskState::TaskStateSubmitted,
-        TaskState::Working => proto::TaskState::TaskStateWorking,
-        TaskState::Completed => proto::TaskState::TaskStateCompleted,
-        TaskState::Failed => proto::TaskState::TaskStateFailed,
-        TaskState::Cancelled => proto::TaskState::TaskStateCancelled,
-        TaskState::InputRequired => proto::TaskState::TaskStateInputRequired,
-        TaskState::Rejected => proto::TaskState::TaskStateRejected,
-        TaskState::AuthRequired => proto::TaskState::TaskStateAuthRequired,
-        TaskState::Unknown => proto::TaskState::TaskStateUnspecified,
+        TaskState::Submitted => proto::TaskState::Submitted,
+        TaskState::Working => proto::TaskState::Working,
+        TaskState::Completed => proto::TaskState::Completed,
+        TaskState::Failed => proto::TaskState::Failed,
+        TaskState::Canceled => proto::TaskState::Cancelled,
+        TaskState::InputRequired => proto::TaskState::InputRequired,
+        TaskState::Rejected => proto::TaskState::Rejected,
+        TaskState::AuthRequired => proto::TaskState::AuthRequired,
+        TaskState::Unknown => proto::TaskState::Unspecified,
     }
 }
 
 /// Convert a proto TaskState to a domain TaskState
 pub fn from_proto_task_state(state: i32) -> Result<TaskState, A2AError> {
     match proto::TaskState::try_from(state) {
-        Ok(proto::TaskState::TaskStateSubmitted) => Ok(TaskState::Submitted),
-        Ok(proto::TaskState::TaskStateWorking) => Ok(TaskState::Working),
-        Ok(proto::TaskState::TaskStateCompleted) => Ok(TaskState::Completed),
-        Ok(proto::TaskState::TaskStateFailed) => Ok(TaskState::Failed),
-        Ok(proto::TaskState::TaskStateCancelled) => Ok(TaskState::Cancelled),
-        Ok(proto::TaskState::TaskStateInputRequired) => Ok(TaskState::InputRequired),
-        Ok(proto::TaskState::TaskStateRejected) => Ok(TaskState::Rejected),
-        Ok(proto::TaskState::TaskStateAuthRequired) => Ok(TaskState::AuthRequired),
-        Ok(proto::TaskState::TaskStateUnspecified) | _ => Ok(TaskState::Unknown),
+        Ok(proto::TaskState::Submitted) => Ok(TaskState::Submitted),
+        Ok(proto::TaskState::Working) => Ok(TaskState::Working),
+        Ok(proto::TaskState::Completed) => Ok(TaskState::Completed),
+        Ok(proto::TaskState::Failed) => Ok(TaskState::Failed),
+        Ok(proto::TaskState::Cancelled) => Ok(TaskState::Canceled),
+        Ok(proto::TaskState::InputRequired) => Ok(TaskState::InputRequired),
+        Ok(proto::TaskState::Rejected) => Ok(TaskState::Rejected),
+        Ok(proto::TaskState::AuthRequired) => Ok(TaskState::AuthRequired),
+        Ok(proto::TaskState::Unspecified) | _ => Ok(TaskState::Unknown),
     }
 }
 
@@ -105,55 +144,84 @@ pub fn to_proto_part(part: &Part) -> Result<proto::Part, A2AError> {
 }
 
 /// Convert a proto Part to a domain Part
-pub fn from_proto_part(part: proto::Part) -> Result<Part, A2AError> {
+pub fn from_proto_part(_part: proto::Part) -> Result<Part, A2AError> {
     // TODO: Implement full conversion
-    Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
+    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
 }
 
 /// Convert a domain Artifact to a proto Artifact
 pub fn to_proto_artifact(artifact: &Artifact) -> Result<proto::Artifact, A2AError> {
-    // TODO: Implement full conversion
+    let parts = artifact.parts.iter()
+        .map(to_proto_part)
+        .collect::<Result<Vec<_>, _>>()?;
+    
     Ok(proto::Artifact {
-        id: artifact.id().to_string(),
-        parts: vec![], // TODO: Convert parts
-        metadata: None,
+        artifact_id: artifact.artifact_id.clone(),
+        name: String::new(), // TODO: Domain Artifact doesn't have name field
+        description: String::new(), // TODO: Domain Artifact doesn't have description field  
+        parts,
+        metadata: None, // TODO: Convert metadata
+        extensions: vec![], // TODO: Domain Artifact doesn't have extensions field
     })
 }
 
 /// Convert a proto Artifact to a domain Artifact
-pub fn from_proto_artifact(artifact: proto::Artifact) -> Result<Artifact, A2AError> {
+pub fn from_proto_artifact(_artifact: proto::Artifact) -> Result<Artifact, A2AError> {
     // TODO: Implement full conversion
-    Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
+    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
 }
 
 /// Convert AgentCard to a proto AgentCard
 pub fn to_proto_agent_card(agent_card: &AgentCard) -> Result<proto::AgentCard, A2AError> {
-    // TODO: Implement full conversion
-    // This is a skeleton implementation
+    // TODO: Complete conversion of complex nested types
+    // This is a partial implementation with correct field mappings
+    
+    use std::collections::HashMap;
+    
     Ok(proto::AgentCard {
         name: agent_card.name.clone(),
         description: agent_card.description.clone(),
         version: agent_card.version.clone(),
-        url: agent_card.url.clone(),
-        protocol_version: agent_card.protocol_version.clone(),
-        preferred_transport: String::new(),
+        protocol_version: Some(agent_card.protocol_version.clone()),
+        
+        // Deprecated fields - set from current values for backward compatibility
+        #[allow(deprecated)]
+        url: Some(agent_card.url.clone()),
+        #[allow(deprecated)]
+        preferred_transport: None,
+        #[allow(deprecated)]
         additional_interfaces: vec![],
-        icon_url: agent_card.icon_url.clone().unwrap_or_default(),
-        capabilities: None, // TODO: Convert capabilities
-        skills: vec![],     // TODO: Convert skills
-        security: None,
-        security_schemes: vec![],
-        signatures: vec![],
-        supports_authenticated_extended_card: agent_card.supports_authenticated_extended_card,
+        
+        // New fields
+        supported_interfaces: vec![], // TODO: Convert interfaces
+        provider: None, // TODO: Convert provider
+        documentation_url: None,
+        icon_url: agent_card.icon_url.clone(),
+        
+        // Content type modes
         default_input_modes: agent_card.default_input_modes.iter().map(|m| m.to_string()).collect(),
         default_output_modes: agent_card.default_output_modes.iter().map(|m| m.to_string()).collect(),
+        
+        // Capabilities and skills
+        capabilities: None, // TODO: Convert capabilities
+        skills: vec![],     // TODO: Convert skills
+        
+        // Security
+        security: vec![],   // TODO: Convert security requirements
+        security_schemes: HashMap::new(), // TODO: Convert security schemes
+        
+        // Extended card support
+        supports_extended_agent_card: agent_card.supports_authenticated_extended_card,
+        
+        // Signatures
+        signatures: vec![],
     })
 }
 
 /// Convert a proto AgentCard to domain types
-pub fn from_proto_agent_card(card: proto::AgentCard) -> Result<(), A2AError> {
+pub fn from_proto_agent_card(_card: proto::AgentCard) -> Result<(), A2AError> {
     // TODO: Implement full conversion
-    Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
+    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
 }
 
 #[cfg(test)]
