@@ -19,10 +19,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         // Use tonic-build to generate Rust code
         // tonic-build integrates well with Cargo's build system
+        // Generated files go to OUT_DIR by default, which is what tonic::include_proto! expects
         tonic_build::configure()
             .build_server(true)
             .build_client(true)
-            .out_dir("src/adapter/grpc/generated")
             .compile_protos(&["proto/a2a.proto"], &["proto"])?;
         
         println!("cargo:warning=Successfully generated gRPC code with tonic-build (validated with Buf)");

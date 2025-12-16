@@ -4,11 +4,10 @@
 //! message types and the internal domain model types.
 
 use crate::domain::core::{
-    Message, Task, TaskStatus, TaskState, Part, Artifact, AgentInfo,
+    Message, Task, TaskStatus, TaskState, Part, Artifact, AgentCard,
 };
-use crate::port::A2AError;
+use crate::domain::error::A2AError;
 use super::proto;
-use prost_types::Timestamp;
 
 /// Convert a domain Message to a proto Message
 pub fn to_proto_message(message: &Message) -> Result<proto::Message, A2AError> {
@@ -127,27 +126,27 @@ pub fn from_proto_artifact(artifact: proto::Artifact) -> Result<Artifact, A2AErr
     Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
 }
 
-/// Convert AgentInfo to a proto AgentCard
-pub fn to_proto_agent_card(agent_info: &dyn AgentInfo) -> Result<proto::AgentCard, A2AError> {
+/// Convert AgentCard to a proto AgentCard
+pub fn to_proto_agent_card(agent_card: &AgentCard) -> Result<proto::AgentCard, A2AError> {
     // TODO: Implement full conversion
     // This is a skeleton implementation
     Ok(proto::AgentCard {
-        name: agent_info.name().to_string(),
-        description: agent_info.description().unwrap_or("").to_string(),
-        version: agent_info.version().to_string(),
-        url: agent_info.url().unwrap_or("").to_string(),
-        protocol_version: "0.3.0".to_string(),
+        name: agent_card.name.clone(),
+        description: agent_card.description.clone(),
+        version: agent_card.version.clone(),
+        url: agent_card.url.clone(),
+        protocol_version: agent_card.protocol_version.clone(),
         preferred_transport: String::new(),
         additional_interfaces: vec![],
-        icon_url: String::new(),
+        icon_url: agent_card.icon_url.clone().unwrap_or_default(),
         capabilities: None, // TODO: Convert capabilities
         skills: vec![],     // TODO: Convert skills
         security: None,
         security_schemes: vec![],
         signatures: vec![],
-        supports_authenticated_extended_card: false,
-        default_input_modes: vec![],
-        default_output_modes: vec![],
+        supports_authenticated_extended_card: agent_card.supports_authenticated_extended_card,
+        default_input_modes: agent_card.default_input_modes.iter().map(|m| m.to_string()).collect(),
+        default_output_modes: agent_card.default_output_modes.iter().map(|m| m.to_string()).collect(),
     })
 }
 

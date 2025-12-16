@@ -2,18 +2,15 @@
 //!
 //! This module provides a gRPC client that implements the A2A protocol
 //! using the official Protocol Buffer definitions.
+//!
+//! **Note**: This is a skeleton implementation. Full AsyncA2AClient trait
+//! implementation is pending completion of proto conversion functions.
 
 use crate::domain::core::{Message, Task};
-use crate::port::A2AError;
-use crate::services::AsyncA2AClient;
-use async_trait::async_trait;
+use crate::domain::error::A2AError;
 use tonic::transport::Channel;
 
-use super::proto::{
-    a2a_service_client::A2aServiceClient, SendMessageRequest, GetTaskRequest,
-    CancelTaskRequest, ListTasksRequest, SubscribeToTaskRequest,
-};
-use super::convert::{to_proto_message, from_proto_task};
+use super::proto::a2a_service_client::A2aServiceClient;
 
 /// gRPC client for the A2A protocol
 ///
@@ -83,99 +80,20 @@ impl GrpcClient {
     }
 }
 
-#[async_trait]
-impl AsyncA2AClient for GrpcClient {
-    async fn send_task_message(
+// Note: Full AsyncA2AClient implementation is TODO
+// This is a skeleton implementation to demonstrate the structure
+// Actual implementation requires completing all proto conversions and method signatures
+
+impl GrpcClient {
+    /// Send a message (basic implementation)
+    ///
+    /// TODO: Implement full AsyncA2AClient trait
+    pub async fn send_message_basic(
         &self,
-        task_id: &str,
-        message: &Message,
-        context_id: Option<String>,
-        accepted_output_modes: Option<Vec<String>>,
+        _task_id: &str,
+        _message: &Message,
     ) -> Result<Task, A2AError> {
-        let request = SendMessageRequest {
-            message: Some(to_proto_message(message)?),
-            task_id: task_id.to_string(),
-            context_id: context_id.unwrap_or_default(),
-            configuration: None, // TODO: Convert accepted_output_modes to configuration
-            tenant: String::new(),
-        };
-
-        let response = self
-            .client
-            .clone()
-            .send_message(request)
-            .await
-            .map_err(|e| A2AError::TransportError(format!("gRPC error: {}", e)))?;
-
-        let task = response
-            .into_inner()
-            .task
-            .ok_or_else(|| A2AError::InvalidResponse("No task in response".to_string()))?;
-
-        from_proto_task(task)
-    }
-
-    async fn get_task(&self, task_id: &str, history_length: Option<i32>) -> Result<Task, A2AError> {
-        let request = GetTaskRequest {
-            name: format!("tasks/{}", task_id),
-            history_length,
-            tenant: String::new(),
-        };
-
-        let response = self
-            .client
-            .clone()
-            .get_task(request)
-            .await
-            .map_err(|e| A2AError::TransportError(format!("gRPC error: {}", e)))?;
-
-        from_proto_task(response.into_inner())
-    }
-
-    async fn cancel_task(&self, task_id: &str, reason: Option<String>) -> Result<Task, A2AError> {
-        let request = CancelTaskRequest {
-            name: format!("tasks/{}", task_id),
-            reason: reason.unwrap_or_default(),
-            tenant: String::new(),
-        };
-
-        let response = self
-            .client
-            .clone()
-            .cancel_task(request)
-            .await
-            .map_err(|e| A2AError::TransportError(format!("gRPC error: {}", e)))?;
-
-        from_proto_task(response.into_inner())
-    }
-
-    async fn list_tasks(
-        &self,
-        page_size: Option<i32>,
-        page_token: Option<String>,
-    ) -> Result<Vec<Task>, A2AError> {
-        let request = ListTasksRequest {
-            page_size: page_size.unwrap_or(50),
-            page_token: page_token.unwrap_or_default(),
-            filter: String::new(),
-            order_by: String::new(),
-            tenant: String::new(),
-        };
-
-        let response = self
-            .client
-            .clone()
-            .list_tasks(request)
-            .await
-            .map_err(|e| A2AError::TransportError(format!("gRPC error: {}", e)))?;
-
-        let tasks = response
-            .into_inner()
-            .tasks
-            .into_iter()
-            .map(from_proto_task)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(tasks)
+        // TODO: Implement
+        Err(A2AError::UnsupportedOperation)
     }
 }

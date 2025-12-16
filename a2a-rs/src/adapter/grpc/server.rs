@@ -3,11 +3,12 @@
 //! This module provides a gRPC server that implements the A2A protocol
 //! using the official Protocol Buffer definitions.
 
-use crate::port::{MessageHandler, TaskManager, NotificationManager, RequestProcessor};
-use crate::domain::core::AgentInfo;
+use crate::services::{AsyncA2ARequestProcessor, AgentInfoProvider};
 use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
 use std::net::SocketAddr;
+use futures::Stream;
+use std::pin::Pin;
 
 use super::proto::{
     a2a_service_server::{A2aService, A2aServiceServer},
@@ -20,7 +21,7 @@ use super::proto::{
     DeleteTaskPushNotificationConfigRequest,
     GetExtendedAgentCardRequest, AgentCard,
 };
-use super::convert::{from_proto_message, to_proto_task, to_proto_agent_card};
+use super::convert::to_proto_agent_card;
 
 /// gRPC server for the A2A protocol
 ///
@@ -48,16 +49,16 @@ use super::convert::{from_proto_message, to_proto_task, to_proto_agent_card};
 /// ```
 pub struct GrpcServer<P>
 where
-    P: RequestProcessor + Send + Sync + 'static,
+    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
 {
     processor: Arc<P>,
-    agent_info: Arc<dyn AgentInfo + Send + Sync>,
+    agent_info: Arc<dyn AgentInfoProvider + Send + Sync>,
     addr: SocketAddr,
 }
 
 impl<P> GrpcServer<P>
 where
-    P: RequestProcessor + Send + Sync + 'static,
+    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
 {
     /// Create a new gRPC server
     ///
@@ -68,7 +69,7 @@ where
     /// * `addr` - The socket address to bind to
     pub fn new(
         processor: P,
-        agent_info: impl AgentInfo + Send + Sync + 'static,
+        agent_info: impl AgentInfoProvider + Send + Sync + 'static,
         addr: SocketAddr,
     ) -> Self {
         Self {
@@ -101,23 +102,21 @@ where
 /// Internal gRPC service implementation
 struct GrpcServiceImpl<P>
 where
-    P: RequestProcessor + Send + Sync + 'static,
+    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
 {
     processor: Arc<P>,
-    agent_info: Arc<dyn AgentInfo + Send + Sync>,
+    agent_info: Arc<dyn AgentInfoProvider + Send + Sync>,
 }
 
 #[tonic::async_trait]
 impl<P> A2aService for GrpcServiceImpl<P>
 where
-    P: RequestProcessor + Send + Sync + 'static,
+    P: AsyncA2ARequestProcessor + Send + Sync + 'static,
 {
     async fn send_message(
         &self,
-        request: Request<SendMessageRequest>,
+        _request: Request<SendMessageRequest>,
     ) -> Result<Response<SendMessageResponse>, Status> {
-        let req = request.into_inner();
-        
         // TODO: Implement message processing
         // This should:
         // 1. Convert proto message to domain Message
@@ -128,7 +127,7 @@ where
         Err(Status::unimplemented("send_message not yet implemented"))
     }
 
-    type SendStreamingMessageStream = tokio_stream::wrappers::ReceiverStream<Result<StreamResponse, Status>>;
+    type SendStreamingMessageStream = Pin<Box<dyn Stream<Item = Result<StreamResponse, Status>> + Send>>;
 
     async fn send_streaming_message(
         &self,
@@ -140,10 +139,8 @@ where
 
     async fn get_task(
         &self,
-        request: Request<GetTaskRequest>,
+        _request: Request<GetTaskRequest>,
     ) -> Result<Response<ProtoTask>, Status> {
-        let req = request.into_inner();
-        
         // TODO: Implement task retrieval
         // Extract task ID from the name field (format: "tasks/{task_id}")
         
@@ -152,7 +149,7 @@ where
 
     async fn list_tasks(
         &self,
-        request: Request<ListTasksRequest>,
+        _request: Request<ListTasksRequest>,
     ) -> Result<Response<ListTasksResponse>, Status> {
         // TODO: Implement task listing
         Err(Status::unimplemented("list_tasks not yet implemented"))
@@ -160,17 +157,17 @@ where
 
     async fn cancel_task(
         &self,
-        request: Request<CancelTaskRequest>,
+        _request: Request<CancelTaskRequest>,
     ) -> Result<Response<ProtoTask>, Status> {
         // TODO: Implement task cancellation
         Err(Status::unimplemented("cancel_task not yet implemented"))
     }
 
-    type SubscribeToTaskStream = tokio_stream::wrappers::ReceiverStream<Result<StreamResponse, Status>>;
+    type SubscribeToTaskStream = Pin<Box<dyn Stream<Item = Result<StreamResponse, Status>> + Send>>;
 
     async fn subscribe_to_task(
         &self,
-        request: Request<SubscribeToTaskRequest>,
+        _request: Request<SubscribeToTaskRequest>,
     ) -> Result<Response<Self::SubscribeToTaskStream>, Status> {
         // TODO: Implement task subscription/streaming
         Err(Status::unimplemented("subscribe_to_task not yet implemented"))
@@ -178,7 +175,7 @@ where
 
     async fn set_task_push_notification_config(
         &self,
-        request: Request<SetTaskPushNotificationConfigRequest>,
+        _request: Request<SetTaskPushNotificationConfigRequest>,
     ) -> Result<Response<TaskPushNotificationConfig>, Status> {
         // TODO: Implement push notification config
         Err(Status::unimplemented("set_task_push_notification_config not yet implemented"))
@@ -202,10 +199,11 @@ where
 
     async fn get_extended_agent_card(
         &self,
-        request: Request<GetExtendedAgentCardRequest>,
+        _request: Request<GetExtendedAgentCardRequest>,
     ) -> Result<Response<AgentCard>, Status> {
         // Convert our agent info to proto AgentCard
-        let card = to_proto_agent_card(self.agent_info.as_ref())
+        let agent_card = self.agent_info.get_agent_card();
+        let card = to_proto_agent_card(&agent_card)
             .map_err(|e| Status::internal(format!("Failed to convert agent card: {}", e)))?;
         
         Ok(Response::new(card))
