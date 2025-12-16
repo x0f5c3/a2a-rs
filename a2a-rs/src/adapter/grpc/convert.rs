@@ -156,3 +156,43 @@ pub fn from_proto_agent_card(card: proto::AgentCard) -> Result<(), A2AError> {
     // TODO: Implement full conversion
     Err(A2AError::InvalidResponse("Conversion not yet implemented".to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::core::TaskState;
+
+    #[test]
+    fn test_task_state_conversions() {
+        // Test all task state conversions
+        let states = vec![
+            (TaskState::Submitted, proto::TaskState::TaskStateSubmitted),
+            (TaskState::Working, proto::TaskState::TaskStateWorking),
+            (TaskState::Completed, proto::TaskState::TaskStateCompleted),
+            (TaskState::Failed, proto::TaskState::TaskStateFailed),
+            (TaskState::Cancelled, proto::TaskState::TaskStateCancelled),
+            (TaskState::InputRequired, proto::TaskState::TaskStateInputRequired),
+            (TaskState::Rejected, proto::TaskState::TaskStateRejected),
+            (TaskState::AuthRequired, proto::TaskState::TaskStateAuthRequired),
+            (TaskState::Unknown, proto::TaskState::TaskStateUnspecified),
+        ];
+
+        for (domain_state, proto_state) in states {
+            // Test domain -> proto
+            let converted_proto = to_proto_task_state(&domain_state);
+            assert_eq!(converted_proto as i32, proto_state as i32);
+
+            // Test proto -> domain
+            let converted_domain = from_proto_task_state(proto_state as i32).unwrap();
+            assert_eq!(converted_domain, domain_state);
+        }
+    }
+
+    #[test]
+    fn test_invalid_task_state() {
+        // Test that invalid proto state converts to Unknown
+        let result = from_proto_task_state(9999);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TaskState::Unknown);
+    }
+}
