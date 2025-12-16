@@ -199,10 +199,12 @@ pub fn to_proto_part(part: &Part) -> Result<proto::Part, A2AError> {
             Some(proto::part::Part::File(file_part))
         }
         Part::Data { data, .. } => {
-            // Convert serde_json::Map to prost_types::Struct
-            // TODO: Implement proper conversion or use default for now
+            // TODO: Implement proper conversion from serde_json::Map to prost_types::Struct
+            // This requires converting each Value type to prost_types::Value
+            // For now, we skip data parts to avoid data loss/corruption
+            // Users should use Text or File parts for structured data until this is implemented
             Some(proto::part::Part::Data(proto::DataPart {
-                data: None, // TODO: Convert Map<String, Value> to prost_types::Struct
+                data: None,
             }))
         }
     };
@@ -253,8 +255,10 @@ pub fn from_proto_part(part: proto::Part) -> Result<Part, A2AError> {
             })
         }
         Some(proto::part::Part::Data(_data_part)) => {
-            // TODO: Convert prost_types::Struct to Map<String, Value>
-            // For now, return empty data
+            // TODO: Implement proper conversion from prost_types::Struct to serde_json::Map
+            // This requires converting prost_types::Value to serde_json::Value
+            // For now, we return empty data to avoid corruption
+            // Users should use Text or File parts for structured data until this is implemented
             Ok(Part::Data {
                 data: serde_json::Map::new(),
                 metadata: None,

@@ -149,10 +149,11 @@ where
         
         // Extract task_id and context_id from the message
         let task_id = message.task_id.as_deref().unwrap_or("");
+        let session_id = message.context_id.as_deref();
         
         // Process the message using the message handler
         let task = self.message_handler
-            .process_message(task_id, &message, None)
+            .process_message(task_id, &message, session_id)
             .await
             .map_err(|e| Status::internal(format!("Failed to process message: {}", e)))?;
         
@@ -244,7 +245,10 @@ where
         
         Ok(Response::new(ListTasksResponse {
             tasks: proto_tasks,
-            next_page_token: String::new(), // TODO: Implement pagination token
+            // TODO: Implement pagination token generation
+            // Should encode the cursor/offset for the next page
+            // For now, empty string indicates no more results
+            next_page_token: String::new(),
             page_size,
             total_size: total_count,
         }))
