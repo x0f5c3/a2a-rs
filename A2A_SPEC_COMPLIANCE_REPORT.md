@@ -4,7 +4,7 @@
 **Implementation**: a2a-rs (Rust)
 **Local Spec Version**: 0.3.0
 **Official Spec Version**: 0.3.0
-**Repository**: https://github.com/EmilLindfors/a2a-rs
+**Repository**: https://github.com/x0f5c3/a2a-rs
 
 ---
 

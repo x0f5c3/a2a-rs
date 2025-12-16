@@ -12,7 +12,7 @@ See the A2A protocol in action with our **reimbursement agent demo** - a complet
 
 ```bash
 # Clone the repository
-git clone https://github.com/emillindfors/a2a-rs.git
+git clone https://github.com/x0f5c3/a2a-rs.git
 cd a2a-rs
 
 # Run the complete demo (agent + web UI)
@@ -256,7 +256,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ### Development Setup
 
 ```bash
-git clone https://github.com/emillindfors/a2a-rs.git
+git clone https://github.com/x0f5c3/a2a-rs.git
 cd a2a-rs
 cargo build --workspace
 cargo test --workspace
