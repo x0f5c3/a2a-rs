@@ -77,11 +77,12 @@ Browser-based client for interacting with A2A agents:
 
 - **Type-Safe Protocol** - Rust's type system ensures protocol compliance
 - **Async-First Design** - Built on Tokio with full async/await support
-- **Multiple Transports** - HTTP, WebSocket with automatic fallback
+- **Multiple Transports** - HTTP, WebSocket, and gRPC support
 - **Streaming Support** - Real-time task updates and progress tracking
 - **Authentication** - JWT, OAuth2, OpenID Connect, API keys
 - **Storage Backends** - SQLx integration for PostgreSQL, MySQL, SQLite
 - **Observability** - Structured logging and tracing throughout
+- **gRPC Protocol** - Full A2A v0.3.0 gRPC specification support with Buf
 
 ### 🤖 Agent Examples
 
@@ -111,7 +112,13 @@ a2a-rs = { version = "0.1.0", features = ["http-client"] }
 # For HTTP server
 a2a-rs = { version = "0.1.0", features = ["http-server"] }
 
-# Everything
+# For gRPC client
+a2a-rs = { version = "0.1.0", features = ["grpc-client"] }
+
+# For gRPC server
+a2a-rs = { version = "0.1.0", features = ["grpc-server"] }
+
+# Everything (includes gRPC)
 a2a-rs = { version = "0.1.0", features = ["full"] }
 ```
 
@@ -180,6 +187,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    Ok(())
+}
+```
+
+### gRPC Client and Server
+
+```rust
+use a2a_rs::{GrpcClient, Message};
+use a2a_rs::services::AsyncA2AClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a gRPC client
+    let client = GrpcClient::connect("http://localhost:50051").await?;
+    
+    // Send a message
+    let message = Message::user_text("Process this request".to_string());
+    let task = client.send_task_message("task-123", &message, None, None).await?;
+    
+    println!("Task created: {:?}", task);
+    Ok(())
+}
+```
+
+```rust
+use a2a_rs::{GrpcServer, SimpleAgentInfo, DefaultRequestProcessor};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let server = GrpcServer::new(
+        DefaultRequestProcessor::new(),
+        SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string()),
+        "[::1]:50051".parse()?,
+    );
+    
+    server.start().await?;
     Ok(())
 }
 ```

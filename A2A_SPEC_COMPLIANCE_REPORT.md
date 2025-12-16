@@ -25,10 +25,13 @@ The `a2a-rs` implementation is **largely compliant** with the official A2A Proto
 
 ⚠️ **Gaps**:
 - New message API methods not implemented (message/send, message/stream)
-- gRPC transport not implemented (only HTTP/WebSocket)
+- gRPC transport skeleton only (client/server structure in place, methods need implementation)
 - Context ID hardcoded in several places
 - AP2 payments extension placeholder only
 - Mutual TLS defined but not implemented
+
+🚧 **In Progress**:
+- gRPC support: Official proto files integrated, skeleton client/server implemented with tonic and Buf
 
 ---
 
@@ -60,12 +63,18 @@ The `a2a-rs` implementation is **largely compliant** with the official A2A Proto
 |-----------|---------------|----------------|-------|
 | **JSON-RPC over HTTP** | Required | ✅ Fully Implemented | Axum-based, production ready |
 | **JSON-RPC over WebSocket** | Optional | ✅ Fully Implemented | tokio-tungstenite, streaming support |
-| **gRPC** | Optional | ❌ **Not Implemented** | Types defined, no actual implementation |
+| **gRPC** | Optional | ⚠️ **Skeleton Implemented** | Proto files, client/server skeleton using tonic, Buf integration |
 | **HTTP+JSON (REST)** | Optional | ❌ **Not Implemented** | Only JSON-RPC binding exists |
 
-**Issue**: The spec defines `TransportProtocol` enum with GRPC and HTTP+JSON, but only JSON-RPC transport is implemented.
+**Status**: gRPC skeleton has been implemented with official a2a.proto from A2A v0.3.0 spec. Full implementation in progress.
 
-**Recommendation**: Either implement gRPC/REST transports or document that only JSON-RPC is supported.
+**Features**:
+- Official Protocol Buffer definitions from a2aproject/A2A
+- Buf integration for proto file linting and validation
+- tonic-based client and server skeletons
+- Type conversion stubs between proto and domain types
+
+**TODO**: Complete gRPC service method implementations and proto↔domain conversions.
 
 ### 3. Data Model Compliance (v0.3.0)
 
