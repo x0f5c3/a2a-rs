@@ -142,9 +142,11 @@ where
         _request: Request<GetTaskRequest>,
     ) -> Result<Response<ProtoTask>, Status> {
         // TODO: Implement task retrieval
-        // Extract task ID from the name field (format: "tasks/{task_id}")
+        // Architecture note: GrpcServer needs direct access to TaskManager
+        // or needs to construct JSON-RPC requests to call processor
+        // This requires architectural refactoring
         
-        Err(Status::unimplemented("get_task not yet implemented"))
+        Err(Status::unimplemented("get_task not yet implemented - needs architectural refactoring"))
     }
 
     async fn list_tasks(
@@ -160,7 +162,11 @@ where
         _request: Request<CancelTaskRequest>,
     ) -> Result<Response<ProtoTask>, Status> {
         // TODO: Implement task cancellation
-        Err(Status::unimplemented("cancel_task not yet implemented"))
+        // Architecture note: GrpcServer needs direct access to TaskManager
+        // or needs to construct JSON-RPC requests to call processor
+        // This requires architectural refactoring
+        
+        Err(Status::unimplemented("cancel_task not yet implemented - needs architectural refactoring"))
     }
 
     type SubscribeToTaskStream = Pin<Box<dyn Stream<Item = Result<StreamResponse, Status>> + Send>>;

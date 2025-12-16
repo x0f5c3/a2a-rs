@@ -126,6 +126,30 @@ cargo build --features grpc-server,grpc-client
 - **Phase 3 (Documentation)**: 4-6 hours
 - **Total**: 14-20 hours of focused development
 
+## Architecture Issue Identified
+
+**Problem**: Current GrpcServer only has access to `AsyncA2ARequestProcessor` which processes JSON-RPC requests. Direct RPC method implementation requires access to lower-level managers (TaskManager, MessageHandler, etc.).
+
+**Solutions**:
+1. **Option A (Preferred)**: Refactor GrpcServer to accept individual managers directly
+   ```rust
+   pub struct GrpcServer<M, T, N> {
+       message_handler: Arc<M>,
+       task_manager: Arc<T>,
+       notification_manager: Arc<N>,
+       agent_info: Arc<dyn AgentInfoProvider>,
+   }
+   ```
+   
+2. **Option B**: Have gRPC methods construct JSON-RPC requests internally and delegate to processor
+   - More overhead but maintains current architecture
+   - Would work but less efficient
+
+3. **Option C**: Create a new `GrpcRequestProcessor` trait that mirrors AsyncA2ARequestProcessor but with direct method calls instead of JSON-RPC
+
+**Recommendation**: Option A for clean separation and performance
+
 ## Current Blockers
 
-None! The foundation is solid and compiling. Ready for RPC method implementation.
+- **Architectural Decision**: Need to choose between options A, B, or C above before implementing RPC methods
+- Once decided, implementation can proceed quickly (~8-10 hours for all methods)
