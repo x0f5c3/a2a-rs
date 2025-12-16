@@ -1,0 +1,8 @@
+version: v1
+managed:
+  enabled: false
+plugins:
+  - plugin: buf.build/protocolbuffers/rust:v28.2
+    out: ../src/adapter/grpc/generated
+  - plugin: buf.build/grpc/rust:v0.3.0
+    out: ../src/adapter/grpc/generated

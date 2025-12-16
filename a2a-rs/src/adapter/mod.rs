@@ -15,6 +15,9 @@ pub mod error;
 pub mod storage;
 pub mod transport;
 
+#[cfg(feature = "grpc")]
+pub mod grpc;
+
 // Legacy re-exports for backward compatibility
 // TODO: Remove these in a future version
 
@@ -43,6 +46,12 @@ pub use storage::InMemoryTaskStorage;
 pub use transport::http::HttpServer;
 #[cfg(feature = "ws-server")]
 pub use transport::websocket::WebSocketServer;
+
+// gRPC re-exports
+#[cfg(feature = "grpc-client")]
+pub use grpc::GrpcClient;
+#[cfg(feature = "grpc-server")]
+pub use grpc::GrpcServer;
 
 // Error re-exports
 #[cfg(feature = "http-client")]
