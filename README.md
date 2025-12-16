@@ -3,8 +3,19 @@
 [![Crates.io](https://img.shields.io/crates/v/a2a-rs.svg)](https://crates.io/crates/a2a-rs)
 [![Documentation](https://docs.rs/a2a-rs/badge.svg)](https://docs.rs/a2a-rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Book](https://img.shields.io/badge/book-mdbook-blue)](https://x0f5c3.github.io/a2a-rs/)
 
 A Rust implementation of the Agent-to-Agent (A2A) Protocol, providing both a robust framework library and practical agent examples. This project demonstrates production-ready agent communication with modern Rust practices and hexagonal architecture.
+
+## 📚 Documentation
+
+**[Read the comprehensive documentation →](https://x0f5c3.github.io/a2a-rs/)**
+
+The documentation includes:
+- 🚀 Getting Started guides
+- 🔧 Integration tutorials for LLM providers
+- 📖 API reference
+- 🎯 Best practices and examples
 
 ## 🎯 Quick Start - Try the Reimbursement Agent
 
