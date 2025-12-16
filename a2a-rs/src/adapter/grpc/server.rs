@@ -135,16 +135,35 @@ where
 {
     async fn send_message(
         &self,
-        _request: Request<SendMessageRequest>,
+        request: Request<SendMessageRequest>,
     ) -> Result<Response<SendMessageResponse>, Status> {
-        // TODO: Implement message processing
-        // This should:
-        // 1. Convert proto message to domain Message
-        // 2. Call processor to handle the message
-        // 3. Convert domain Task back to proto Task
-        // 4. Return the response
+        let req = request.into_inner();
         
-        Err(Status::unimplemented("send_message not yet implemented"))
+        // Extract the message from the request
+        let proto_message = req.request
+            .ok_or_else(|| Status::invalid_argument("Message is required"))?;
+        
+        // Convert proto Message to domain Message
+        let message = from_proto_message(proto_message)
+            .map_err(|e| Status::internal(format!("Failed to convert message: {}", e)))?;
+        
+        // Extract task_id and context_id from the message
+        let task_id = message.task_id.as_deref().unwrap_or("");
+        
+        // Process the message using the message handler
+        let task = self.message_handler
+            .process_message(task_id, &message, None)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to process message: {}", e)))?;
+        
+        // Convert domain Task to proto Task
+        let proto_task = to_proto_task(&task)
+            .map_err(|e| Status::internal(format!("Failed to convert task: {}", e)))?;
+        
+        // Return response with task
+        Ok(Response::new(SendMessageResponse {
+            payload: Some(super::proto::send_message_response::Payload::Task(proto_task)),
+        }))
     }
 
     type SendStreamingMessageStream = Pin<Box<dyn Stream<Item = Result<StreamResponse, Status>> + Send>>;

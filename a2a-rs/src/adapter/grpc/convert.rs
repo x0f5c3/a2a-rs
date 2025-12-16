@@ -35,10 +35,48 @@ pub fn to_proto_message(message: &Message) -> Result<proto::Message, A2AError> {
 }
 
 /// Convert a proto Message to a domain Message
-pub fn from_proto_message(_message: proto::Message) -> Result<Message, A2AError> {
-    // TODO: Implement full conversion
-    // This is a skeleton implementation
-    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
+pub fn from_proto_message(message: proto::Message) -> Result<Message, A2AError> {
+    use crate::domain::core::Role;
+    
+    // Convert proto role to domain role
+    let role = match proto::Role::try_from(message.role) {
+        Ok(proto::Role::User) => Role::User,
+        Ok(proto::Role::Agent) => Role::Agent,
+        _ => Role::User, // Default to User if unspecified
+    };
+    
+    // Convert parts
+    let parts = message.parts.into_iter()
+        .map(from_proto_part)
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    Ok(Message {
+        message_id: message.message_id,
+        role,
+        parts,
+        metadata: None, // TODO: Convert metadata from proto Struct
+        reference_task_ids: if message.reference_task_ids.is_empty() {
+            None
+        } else {
+            Some(message.reference_task_ids)
+        },
+        task_id: if message.task_id.is_empty() {
+            None
+        } else {
+            Some(message.task_id)
+        },
+        context_id: if message.context_id.is_empty() {
+            None
+        } else {
+            Some(message.context_id)
+        },
+        extensions: if message.extensions.is_empty() {
+            None
+        } else {
+            Some(message.extensions)
+        },
+        kind: "message".to_string(),
+    })
 }
 
 /// Convert a domain Task to a proto Task
@@ -136,17 +174,98 @@ pub fn from_proto_task_state(state: i32) -> Result<TaskState, A2AError> {
 
 /// Convert a domain Part to a proto Part
 pub fn to_proto_part(part: &Part) -> Result<proto::Part, A2AError> {
-    // TODO: Implement full conversion
+    let part_content = match part {
+        Part::Text { text, .. } => Some(proto::part::Part::Text(text.clone())),
+        Part::File { file, .. } => {
+            let file_part = if let Some(uri) = &file.uri {
+                proto::FilePart {
+                    file: Some(proto::file_part::File::FileWithUri(uri.clone())),
+                    media_type: file.mime_type.clone().unwrap_or_default(),
+                    name: file.name.clone().unwrap_or_default(),
+                }
+            } else if let Some(bytes_str) = &file.bytes {
+                // Decode base64 string to Vec<u8>
+                use base64::{Engine as _, engine::general_purpose::STANDARD};
+                let bytes_vec = STANDARD.decode(bytes_str)
+                    .map_err(|e| A2AError::Internal(format!("Failed to decode base64: {}", e)))?;
+                proto::FilePart {
+                    file: Some(proto::file_part::File::FileWithBytes(bytes_vec)),
+                    media_type: file.mime_type.clone().unwrap_or_default(),
+                    name: file.name.clone().unwrap_or_default(),
+                }
+            } else {
+                return Err(A2AError::Internal("File must have either URI or bytes".to_string()));
+            };
+            Some(proto::part::Part::File(file_part))
+        }
+        Part::Data { data, .. } => {
+            // Convert serde_json::Map to prost_types::Struct
+            // TODO: Implement proper conversion or use default for now
+            Some(proto::part::Part::Data(proto::DataPart {
+                data: None, // TODO: Convert Map<String, Value> to prost_types::Struct
+            }))
+        }
+    };
+    
     Ok(proto::Part {
-        part: None, // TODO: Handle different part types
-        metadata: None,
+        part: part_content,
+        metadata: None, // TODO: Convert metadata
     })
 }
 
 /// Convert a proto Part to a domain Part
-pub fn from_proto_part(_part: proto::Part) -> Result<Part, A2AError> {
-    // TODO: Implement full conversion
-    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
+pub fn from_proto_part(part: proto::Part) -> Result<Part, A2AError> {
+    use crate::domain::core::FileContent;
+    
+    match part.part {
+        Some(proto::part::Part::Text(text)) => {
+            Ok(Part::Text {
+                text,
+                metadata: None, // TODO: Convert metadata
+            })
+        }
+        Some(proto::part::Part::File(file_part)) => {
+            let (uri, bytes) = match file_part.file {
+                Some(proto::file_part::File::FileWithUri(uri)) => (Some(uri), None),
+                Some(proto::file_part::File::FileWithBytes(bytes_vec)) => {
+                    // Convert Vec<u8> to base64 string
+                    use base64::{Engine as _, engine::general_purpose::STANDARD};
+                    let bytes_str = STANDARD.encode(&bytes_vec);
+                    (None, Some(bytes_str))
+                }
+                None => {
+                    return Err(A2AError::InvalidRequest(
+                        "File part must have either URI or bytes".to_string(),
+                    ));
+                }
+            };
+            
+            let file_content = FileContent {
+                name: if file_part.name.is_empty() { None } else { Some(file_part.name) },
+                mime_type: if file_part.media_type.is_empty() { None } else { Some(file_part.media_type) },
+                bytes,
+                uri,
+            };
+            
+            Ok(Part::File {
+                file: file_content,
+                metadata: None, // TODO: Convert metadata
+            })
+        }
+        Some(proto::part::Part::Data(_data_part)) => {
+            // TODO: Convert prost_types::Struct to Map<String, Value>
+            // For now, return empty data
+            Ok(Part::Data {
+                data: serde_json::Map::new(),
+                metadata: None,
+            })
+        }
+        None => {
+            Err(A2AError::InvalidRequest(
+                "Part must have content".to_string(),
+            ))
+        }
+    }
 }
 
 /// Convert a domain Artifact to a proto Artifact
