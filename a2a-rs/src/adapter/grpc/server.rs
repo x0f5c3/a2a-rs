@@ -37,16 +37,16 @@ use super::convert::{to_proto_agent_card, to_proto_task, from_proto_message};
 /// ```rust,no_run
 /// # #[cfg(feature = "grpc-server")]
 /// # {
-/// use a2a_rs::{GrpcServer, SimpleAgentInfo, InMemoryTaskStorage};
+/// use a2a_rs::{GrpcServer, SimpleAgentInfo, InMemoryTaskStorage, DefaultMessageHandler};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let task_manager = InMemoryTaskStorage::new();
-///     let message_handler = InMemoryTaskStorage::new();
+///     let task_storage = InMemoryTaskStorage::new();
+///     let message_handler = DefaultMessageHandler::new(task_storage.clone());
 ///     let agent_info = SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string());
 ///     
 ///     let server = GrpcServer::new(
-///         task_manager,
+///         task_storage,
 ///         message_handler,
 ///         agent_info,
 ///         "[::1]:50051".parse()?,

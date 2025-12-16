@@ -37,7 +37,7 @@ pub use auth::{JwtAuthenticator, OAuth2Authenticator, OpenIdConnectAuthenticator
 #[cfg(all(feature = "server", feature = "http-client"))]
 pub use business::HttpPushNotificationSender;
 #[cfg(feature = "server")]
-pub use business::{DefaultRequestProcessor, SimpleAgentInfo};
+pub use business::{DefaultRequestProcessor, SimpleAgentInfo, DefaultMessageHandler};
 #[cfg(feature = "server")]
 pub use business::{NoopPushNotificationSender, PushNotificationRegistry, PushNotificationSender};
 #[cfg(feature = "server")]
