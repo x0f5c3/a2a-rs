@@ -5,14 +5,22 @@ This guide will help you create your first A2A agent in minutes.
 ## Simple HTTP Server
 
 ```rust
-use a2a_rs::{HttpServer, InMemoryTaskStorage, DefaultRequestProcessor, SimpleAgentInfo};
+use a2a_rs::{HttpServer, InMemoryTaskStorage, DefaultRequestProcessor, DefaultMessageHandler, SimpleAgentInfo};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create storage and agent info
+    // Create storage, handlers, and agent info
     let storage = InMemoryTaskStorage::new();
-    let processor = DefaultRequestProcessor::new();
+    let message_handler = DefaultMessageHandler::new(storage.clone());
     let agent = SimpleAgentInfo::new("my-agent".into(), "1.0.0".into());
+    
+    // Create processor with all required handlers
+    let processor = DefaultRequestProcessor::new(
+        message_handler,
+        storage.clone(),
+        storage.clone(), // storage also implements AsyncNotificationManager
+        agent.clone(),
+    );
     
     // Create and start HTTP server
     let server = HttpServer::new(processor, agent, "127.0.0.1:3000".parse()?);
@@ -54,13 +62,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## WebSocket Server
 
 ```rust
-use a2a_rs::{WebSocketServer, InMemoryTaskStorage, DefaultRequestProcessor, SimpleAgentInfo};
+use a2a_rs::{WebSocketServer, InMemoryTaskStorage, DefaultRequestProcessor, DefaultMessageHandler, SimpleAgentInfo};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create storage, handlers, and agent info
     let storage = InMemoryTaskStorage::new();
-    let processor = DefaultRequestProcessor::new();
+    let message_handler = DefaultMessageHandler::new(storage.clone());
     let agent = SimpleAgentInfo::new("my-agent".into(), "1.0.0".into());
+    
+    // Create processor with all required handlers
+    let processor = DefaultRequestProcessor::new(
+        message_handler,
+        storage.clone(),
+        storage.clone(), // storage also implements AsyncNotificationManager
+        agent.clone(),
+    );
     
     let server = WebSocketServer::new(processor, agent, "127.0.0.1:3001".parse()?);
     

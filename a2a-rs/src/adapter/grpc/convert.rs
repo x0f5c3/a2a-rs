@@ -107,10 +107,36 @@ pub fn to_proto_task(task: &Task) -> Result<proto::Task, A2AError> {
 }
 
 /// Convert a proto Task to a domain Task
-pub fn from_proto_task(_task: proto::Task) -> Result<Task, A2AError> {
-    // TODO: Implement full conversion
-    // This is a skeleton implementation
-    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
+pub fn from_proto_task(task: proto::Task) -> Result<Task, A2AError> {
+    let status = if let Some(proto_status) = task.status {
+        from_proto_task_status(proto_status)?
+    } else {
+        return Err(A2AError::InvalidRequest("Task must have status".to_string()));
+    };
+    
+    let artifacts = if task.artifacts.is_empty() {
+        None
+    } else {
+        Some(task.artifacts.iter()
+            .map(|a| from_proto_artifact(a.clone()))
+            .collect::<Result<Vec<_>, _>>()?)
+    };
+    
+    // History contains Message objects, not TaskStatus
+    // For now, we leave history as None since proto history contains TaskStatus
+    // TODO: Map proto TaskStatus history to domain Message history properly
+    let history: Option<Vec<crate::domain::Message>> = None;
+    
+    // Build Task directly since bon builder expects non-Option types for Option fields
+    Ok(Task {
+        id: task.id,
+        context_id: task.context_id,
+        status,
+        artifacts,
+        history,
+        metadata: None,
+        kind: "task".to_string(),
+    })
 }
 
 /// Convert a domain TaskStatus to a proto TaskStatus
@@ -137,9 +163,29 @@ pub fn to_proto_task_status(status: &TaskStatus) -> Result<proto::TaskStatus, A2
 }
 
 /// Convert a proto TaskStatus to a domain TaskStatus
-pub fn from_proto_task_status(_status: proto::TaskStatus) -> Result<TaskStatus, A2AError> {
-    // TODO: Implement full conversion
-    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
+pub fn from_proto_task_status(status: proto::TaskStatus) -> Result<TaskStatus, A2AError> {
+    use chrono::{DateTime, Utc};
+    
+    let state = from_proto_task_state(status.state)?;
+    
+    let message = if let Some(proto_msg) = status.message {
+        Some(from_proto_message(proto_msg)?)
+    } else {
+        None
+    };
+    
+    let timestamp = if let Some(ts) = status.timestamp {
+        Some(DateTime::<Utc>::from_timestamp(ts.seconds, ts.nanos as u32)
+            .ok_or_else(|| A2AError::Internal("Invalid timestamp".to_string()))?)
+    } else {
+        None
+    };
+    
+    Ok(TaskStatus {
+        state,
+        message,
+        timestamp,
+    })
 }
 
 /// Convert a domain TaskState to a proto TaskState
@@ -198,7 +244,7 @@ pub fn to_proto_part(part: &Part) -> Result<proto::Part, A2AError> {
             };
             Some(proto::part::Part::File(file_part))
         }
-        Part::Data { data, .. } => {
+        Part::Data { data: _, .. } => {
             // TODO: Implement proper conversion from serde_json::Map to prost_types::Struct
             // This requires converting each Value type to prost_types::Value
             // For now, we skip data parts to avoid data loss/corruption
@@ -289,9 +335,26 @@ pub fn to_proto_artifact(artifact: &Artifact) -> Result<proto::Artifact, A2AErro
 }
 
 /// Convert a proto Artifact to a domain Artifact
-pub fn from_proto_artifact(_artifact: proto::Artifact) -> Result<Artifact, A2AError> {
-    // TODO: Implement full conversion
-    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
+pub fn from_proto_artifact(artifact: proto::Artifact) -> Result<Artifact, A2AError> {
+    let parts = artifact.parts.iter()
+        .map(|p| from_proto_part(p.clone()))
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    // Generate a unique artifact_id if not provided
+    let artifact_id = if artifact.name.is_empty() {
+        format!("artifact-{}", uuid::Uuid::new_v4())
+    } else {
+        artifact.name.clone()
+    };
+    
+    Ok(Artifact {
+        artifact_id,
+        parts,
+        name: if artifact.name.is_empty() { None } else { Some(artifact.name) },
+        description: if artifact.description.is_empty() { None } else { Some(artifact.description) },
+        extensions: if artifact.extensions.is_empty() { None } else { Some(artifact.extensions) },
+        metadata: None, // TODO: Convert metadata map from proto
+    })
 }
 
 /// Convert AgentCard to a proto AgentCard
@@ -342,9 +405,13 @@ pub fn to_proto_agent_card(agent_card: &AgentCard) -> Result<proto::AgentCard, A
 }
 
 /// Convert a proto AgentCard to domain types
+/// Note: This is a placeholder that accepts but doesn't convert the card
+/// Full conversion requires implementing complex nested type mappings
 pub fn from_proto_agent_card(_card: proto::AgentCard) -> Result<(), A2AError> {
-    // TODO: Implement full conversion
-    Err(A2AError::UnsupportedOperation("Conversion not yet implemented".to_string()))
+    // TODO: Implement full conversion when needed for client-side operations
+    // For now, agent cards are primarily read from the server (to_proto direction)
+    // Client-side parsing can be added when implementing full client features
+    Ok(())
 }
 
 #[cfg(test)]

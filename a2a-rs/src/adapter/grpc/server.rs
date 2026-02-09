@@ -171,7 +171,7 @@ where
 
     async fn send_streaming_message(
         &self,
-        request: Request<SendMessageRequest>,
+        _request: Request<SendMessageRequest>,
     ) -> Result<Response<Self::SendStreamingMessageStream>, Status> {
         // TODO: Implement streaming message processing
         Err(Status::unimplemented("send_streaming_message not yet implemented"))
@@ -233,7 +233,7 @@ where
         let context_filter = if req.context_id.is_empty() {
             None
         } else {
-            Some(req.context_id)
+            Some(req.context_id.as_str())
         };
         
         // List tasks using the task manager
@@ -311,7 +311,7 @@ where
 
     async fn get_task_push_notification_config(
         &self,
-        request: Request<GetTaskPushNotificationConfigRequest>,
+        _request: Request<GetTaskPushNotificationConfigRequest>,
     ) -> Result<Response<TaskPushNotificationConfig>, Status> {
         // TODO: Implement push notification config retrieval
         Err(Status::unimplemented("get_task_push_notification_config not yet implemented"))
@@ -319,7 +319,7 @@ where
 
     async fn list_task_push_notification_config(
         &self,
-        request: Request<ListTaskPushNotificationConfigRequest>,
+        _request: Request<ListTaskPushNotificationConfigRequest>,
     ) -> Result<Response<ListTaskPushNotificationConfigResponse>, Status> {
         // TODO: Implement push notification config listing
         Err(Status::unimplemented("list_task_push_notification_config not yet implemented"))
@@ -340,7 +340,7 @@ where
 
     async fn delete_task_push_notification_config(
         &self,
-        request: Request<DeleteTaskPushNotificationConfigRequest>,
+        _request: Request<DeleteTaskPushNotificationConfigRequest>,
     ) -> Result<Response<()>, Status> {
         // TODO: Implement push notification config deletion
         Err(Status::unimplemented("delete_task_push_notification_config not yet implemented"))

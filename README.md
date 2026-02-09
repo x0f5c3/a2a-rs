@@ -223,13 +223,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ```rust
-use a2a_rs::{GrpcServer, SimpleAgentInfo, DefaultRequestProcessor};
+use a2a_rs::{GrpcServer, InMemoryTaskStorage, DefaultMessageHandler, SimpleAgentInfo};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Set up task storage and message handler
+    let task_storage = InMemoryTaskStorage::new();
+    let message_handler = DefaultMessageHandler::new(task_storage.clone());
+    let agent_info = SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string());
+    
+    // Create and start gRPC server
     let server = GrpcServer::new(
-        DefaultRequestProcessor::new(),
-        SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string()),
+        task_storage,
+        message_handler,
+        agent_info,
         "[::1]:50051".parse()?,
     );
     

@@ -44,56 +44,42 @@ a2a-rs = { version = "0.1.0", features = ["grpc-client", "grpc-server"] }
 
 ### Basic Client Example
 
+> **Note**: The `GrpcClient` currently provides a basic connection skeleton. Full client-side RPC method implementations are in progress. For now, you can connect to a gRPC server and use the low-level proto client methods directly.
+
 ```rust
-use a2a_rs::{GrpcClient, Message};
-use a2a_rs::services::AsyncA2AClient;
+use a2a_rs::GrpcClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Connect to a gRPC server
-    let client = GrpcClient::connect("http://localhost:50051").await?;
+    let mut client = GrpcClient::connect("http://localhost:50051").await?;
     
-    // Create a message
-    let message = Message::user_text("Hello, agent!".to_string());
+    println!("Connected to gRPC server");
     
-    // Send a task message
-    let task = client.send_task_message(
-        "task-123",
-        &message,
-        None, // context_id
-        None, // accepted_output_modes
-    ).await?;
-    
-    println!("Task created: {:?}", task);
-    
-    // Get task status
-    let task = client.get_task("task-123", Some(10)).await?;
-    println!("Task status: {:?}", task.status());
+    // TODO: Client-side RPC methods (send_message, get_task, etc.) are in progress
+    // For now, you can use the underlying tonic client directly via client.inner()
     
     Ok(())
 }
 ```
 
-### Canceling a Task
+### Future Client API (In Development)
+
+Once complete, the client will support these operations:
 
 ```rust
-let task = client.cancel_task(
-    "task-123",
-    Some("User requested cancellation".to_string())
-).await?;
-```
+// Send a message (planned)
+// let message = Message::user_text("Hello, agent!".to_string());
+// let response = client.send_message(message, context_id).await?;
 
-### Listing Tasks
+// Get a task (planned)
+// let task = client.get_task("tasks/123", Some(10)).await?;
 
-```rust
-let tasks = client.list_tasks(
-    Some(50),  // page_size
-    None,      // page_token
-).await?;
+// Cancel a task (planned)
+// let task = client.cancel_task("tasks/123").await?;
 
-for task in tasks {
-    println!("Task {}: {:?}", task.id(), task.status().state());
-}
+// List tasks (planned)
+// let response = client.list_tasks(page_size, page_token).await?;
 ```
 
 ## Server Usage
