@@ -13,7 +13,8 @@ The gRPC implementation provides an alternative transport layer for the A2A prot
 - ✅ [tonic](https://github.com/hyperium/tonic) for high-performance gRPC client and server
 - ✅ Automatic code generation from proto files during build
 - ✅ Type-safe conversions between proto and domain types
-- ⚠️ Service method implementations (in progress)
+- ✅ Core service method implementations: `send_message`, `get_task`, `cancel_task`, `list_tasks`, `get_extended_agent_card`
+- ⚠️ Additional/advanced service methods and features (in progress)
 
 ## Getting Started
 

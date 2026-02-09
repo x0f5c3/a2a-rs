@@ -356,15 +356,15 @@ mod tests {
     fn test_task_state_conversions() {
         // Test all task state conversions
         let states = vec![
-            (TaskState::Submitted, proto::TaskState::TaskStateSubmitted),
-            (TaskState::Working, proto::TaskState::TaskStateWorking),
-            (TaskState::Completed, proto::TaskState::TaskStateCompleted),
-            (TaskState::Failed, proto::TaskState::TaskStateFailed),
-            (TaskState::Cancelled, proto::TaskState::TaskStateCancelled),
-            (TaskState::InputRequired, proto::TaskState::TaskStateInputRequired),
-            (TaskState::Rejected, proto::TaskState::TaskStateRejected),
-            (TaskState::AuthRequired, proto::TaskState::TaskStateAuthRequired),
-            (TaskState::Unknown, proto::TaskState::TaskStateUnspecified),
+            (TaskState::Submitted, proto::TaskState::Submitted),
+            (TaskState::Working, proto::TaskState::Working),
+            (TaskState::Completed, proto::TaskState::Completed),
+            (TaskState::Failed, proto::TaskState::Failed),
+            (TaskState::Canceled, proto::TaskState::Cancelled),
+            (TaskState::InputRequired, proto::TaskState::InputRequired),
+            (TaskState::Rejected, proto::TaskState::Rejected),
+            (TaskState::AuthRequired, proto::TaskState::AuthRequired),
+            (TaskState::Unknown, proto::TaskState::Unspecified),
         ];
 
         for (domain_state, proto_state) in states {

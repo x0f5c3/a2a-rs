@@ -5,22 +5,25 @@
 
 #![cfg(all(feature = "grpc-client", feature = "grpc-server"))]
 
-use a2a_rs::{GrpcClient, GrpcServer, SimpleAgentInfo, DefaultRequestProcessor};
+use a2a_rs::{GrpcClient, GrpcServer, SimpleAgentInfo, InMemoryTaskStorage, DefaultMessageHandler};
 use std::net::SocketAddr;
 use tokio::time::Duration;
 
 /// Test that the gRPC server can start and stop
 #[tokio::test]
 async fn test_grpc_server_lifecycle() {
-    let processor = DefaultRequestProcessor::new();
     let agent_info = SimpleAgentInfo::new(
         "test-agent".to_string(),
         "1.0.0".to_string(),
     );
     
+    // Set up task storage/manager and message handler using the new architecture
+    let task_storage = InMemoryTaskStorage::new();
+    let message_handler = DefaultMessageHandler::new();
+    
     // Use a random available port
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let server = GrpcServer::new(processor, agent_info, addr);
+    let server = GrpcServer::new(task_storage, message_handler, agent_info, addr);
     
     // Server creation should succeed
     // TODO: Add proper lifecycle test once server.start() can be gracefully shutdown

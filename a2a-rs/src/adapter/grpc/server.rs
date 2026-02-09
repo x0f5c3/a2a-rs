@@ -228,9 +228,17 @@ where
             Some(50)
         };
         
+        // Derive optional context filter from the request.
+        // Treat an empty context_id as "no filter" to preserve existing behaviour.
+        let context_filter = if req.context_id.is_empty() {
+            None
+        } else {
+            Some(req.context_id)
+        };
+        
         // List tasks using the task manager
         let tasks = self.task_manager
-            .list_tasks(None, limit)
+            .list_tasks(context_filter, limit)
             .await
             .map_err(|e| Status::internal(format!("Failed to list tasks: {}", e)))?;
         
