@@ -3,8 +3,19 @@
 [![Crates.io](https://img.shields.io/crates/v/a2a-rs.svg)](https://crates.io/crates/a2a-rs)
 [![Documentation](https://docs.rs/a2a-rs/badge.svg)](https://docs.rs/a2a-rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Book](https://img.shields.io/badge/book-mdbook-blue)](https://x0f5c3.github.io/a2a-rs/)
 
 A Rust implementation of the Agent-to-Agent (A2A) Protocol, providing both a robust framework library and practical agent examples. This project demonstrates production-ready agent communication with modern Rust practices and hexagonal architecture.
+
+## 📚 Documentation
+
+**[Read the comprehensive documentation →](https://x0f5c3.github.io/a2a-rs/)**
+
+The documentation includes:
+- 🚀 Getting Started guides
+- 🔧 Integration tutorials for LLM providers
+- 📖 API reference
+- 🎯 Best practices and examples
 
 ## 🎯 Quick Start - Try the Reimbursement Agent
 
@@ -12,7 +23,7 @@ See the A2A protocol in action with our **reimbursement agent demo** - a complet
 
 ```bash
 # Clone the repository
-git clone https://github.com/emillindfors/a2a-rs.git
+git clone https://github.com/x0f5c3/a2a-rs.git
 cd a2a-rs
 
 # Run the complete demo (agent + web UI)
@@ -77,11 +88,12 @@ Browser-based client for interacting with A2A agents:
 
 - **Type-Safe Protocol** - Rust's type system ensures protocol compliance
 - **Async-First Design** - Built on Tokio with full async/await support
-- **Multiple Transports** - HTTP, WebSocket with automatic fallback
+- **Multiple Transports** - HTTP, WebSocket, and gRPC support
 - **Streaming Support** - Real-time task updates and progress tracking
 - **Authentication** - JWT, OAuth2, OpenID Connect, API keys
 - **Storage Backends** - SQLx integration for PostgreSQL, MySQL, SQLite
 - **Observability** - Structured logging and tracing throughout
+- **gRPC Protocol** - Full A2A v0.3.0 gRPC specification support with Buf
 
 ### 🤖 Agent Examples
 
@@ -111,7 +123,13 @@ a2a-rs = { version = "0.1.0", features = ["http-client"] }
 # For HTTP server
 a2a-rs = { version = "0.1.0", features = ["http-server"] }
 
-# Everything
+# For gRPC client
+a2a-rs = { version = "0.1.0", features = ["grpc-client"] }
+
+# For gRPC server
+a2a-rs = { version = "0.1.0", features = ["grpc-server"] }
+
+# Everything (includes gRPC)
 a2a-rs = { version = "0.1.0", features = ["full"] }
 ```
 
@@ -180,6 +198,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    Ok(())
+}
+```
+
+### gRPC Client and Server
+
+```rust
+use a2a_rs::{GrpcClient, Message};
+use a2a_rs::services::AsyncA2AClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a gRPC client
+    let client = GrpcClient::connect("http://localhost:50051").await?;
+    
+    // Send a message
+    let message = Message::user_text("Process this request".to_string());
+    let task = client.send_task_message("task-123", &message, None, None).await?;
+    
+    println!("Task created: {:?}", task);
+    Ok(())
+}
+```
+
+```rust
+use a2a_rs::{GrpcServer, InMemoryTaskStorage, DefaultMessageHandler, SimpleAgentInfo};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Set up task storage and message handler
+    let task_storage = InMemoryTaskStorage::new();
+    let message_handler = DefaultMessageHandler::new(task_storage.clone());
+    let agent_info = SimpleAgentInfo::new("my-agent".to_string(), "1.0.0".to_string());
+    
+    // Create and start gRPC server
+    let server = GrpcServer::new(
+        task_storage,
+        message_handler,
+        agent_info,
+        "[::1]:50051".parse()?,
+    );
+    
+    server.start().await?;
     Ok(())
 }
 ```
@@ -256,7 +317,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ### Development Setup
 
 ```bash
-git clone https://github.com/emillindfors/a2a-rs.git
+git clone https://github.com/x0f5c3/a2a-rs.git
 cd a2a-rs
 cargo build --workspace
 cargo test --workspace

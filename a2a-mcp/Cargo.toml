@@ -5,7 +5,7 @@ edition = "2024"
 authors = ["A2A-RS Contributors"]
 description = "Integration between A2A Protocol and Rusty Model Context Protocol (RMCP)"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/username/a2a-rs"
+repository = "https://github.com/x0f5c3/a2a-rs"
 keywords = ["a2a", "rmcp", "ai", "agent", "protocol"]
 categories = ["ai", "network-programming"]
 

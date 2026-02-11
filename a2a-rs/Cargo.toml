@@ -6,7 +6,7 @@ rust-version = "1.85"
 authors = ["Emil Lindfors <emil@lindfors.no>"]
 description = "Rust implementation of the Agent-to-Agent (A2A) Protocol"
 license = "MIT"
-repository = "https://github.com/emillindfors/a2a-rs"
+repository = "https://github.com/x0f5c3/a2a-rs"
 readme = "README.md"
 keywords = ["agent", "protocol", "jsonrpc", "a2a"]
 categories = ["api-bindings", "network-programming"]
@@ -48,6 +48,14 @@ openidconnect = { version = "3.5", optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"], optional = true }
 
+# gRPC - optional
+tonic = { version = "0.12", optional = true }
+prost = { version = "0.13", optional = true }
+prost-types = { version = "0.13", optional = true }
+
+[build-dependencies]
+tonic-build = { version = "0.12", optional = true }
+
 [dev-dependencies]
 # Testing dependencies
 proptest = "1.4"
@@ -70,7 +78,10 @@ sqlx-storage = ["server", "dep:sqlx"]
 sqlite = ["sqlx-storage", "sqlx/sqlite"]
 postgres = ["sqlx-storage", "sqlx/postgres"]
 mysql = ["sqlx-storage", "sqlx/mysql"]
-full = ["http-client", "ws-client", "http-server", "ws-server", "tracing", "auth", "sqlite", "postgres"]
+grpc = ["dep:tonic", "dep:prost", "dep:prost-types", "dep:tonic-build"]
+grpc-client = ["grpc", "client"]
+grpc-server = ["grpc", "server"]
+full = ["http-client", "ws-client", "http-server", "ws-server", "grpc-client", "grpc-server", "tracing", "auth", "sqlite", "postgres"]
 
 
 [[example]]
