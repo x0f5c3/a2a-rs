@@ -1,0 +1,7 @@
+# mdBook output
+book/
+
+# Temporary files
+*.tmp
+*~
+.DS_Store

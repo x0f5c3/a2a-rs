@@ -111,6 +111,12 @@ pub use adapter::HttpServer;
 #[cfg(feature = "ws-server")]
 pub use adapter::WebSocketServer;
 
+#[cfg(feature = "grpc-client")]
+pub use adapter::GrpcClient;
+
+#[cfg(feature = "grpc-server")]
+pub use adapter::GrpcServer;
+
 #[cfg(feature = "server")]
 pub use adapter::{
     DefaultRequestProcessor, InMemoryTaskStorage, NoopPushNotificationSender,

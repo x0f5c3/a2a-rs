@@ -1,0 +1,27 @@
+[book]
+authors = ["x0f5c3"]
+language = "en"
+multilingual = false
+src = "src"
+title = "A2A Protocol Rust Implementation"
+description = "Documentation for a2a-rs, a production-ready Rust implementation of the A2A Protocol v0.3.0"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/x0f5c3/a2a-rs"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/x0f5c3/a2a-rs/edit/main/docs/{path}"
+site-url = "/a2a-rs/"
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+
+[output.html.print]
+enable = true

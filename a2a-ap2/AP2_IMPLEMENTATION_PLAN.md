@@ -1,6 +1,6 @@
 # AP2 (Agent Payments Protocol) Implementation Plan
 
-**Issue**: [#7](https://github.com/EmilLindfors/a2a-rs/issues/7)
+**Issue**: [#7](https://github.com/x0f5c3/a2a-rs/issues/7)
 **Status**: Planning
 **Feature Flag**: `ap2`
 **Estimated Complexity**: Medium
@@ -1019,11 +1019,11 @@ This implementation establishes a pattern for future extensions:
 
 ## References
 
-- [GitHub Issue #7](https://github.com/EmilLindfors/a2a-rs/issues/7)
+- [GitHub Issue #7](https://github.com/x0f5c3/a2a-rs/issues/7)
 - [AP2 Specification](https://github.com/google-agentic-commerce/AP2/blob/main/docs/a2a-extension.md)
 - [A2A Protocol v0.3.0 Spec (new)](./spec/specification_new.json) - **Contains official AgentExtension structure**
 - [A2A Protocol Spec (legacy)](./spec/specification.json)
-- [A2A Protocol Spec (split)](https://github.com/EmilLindfors/a2a-rs/tree/master/spec)
+- [A2A Protocol Spec (split)](https://github.com/x0f5c3/a2a-rs/tree/master/spec)
 - [Rig Framework](https://github.com/0xPlaygrounds/rig)
 
 ---
